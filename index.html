@@ -234,8 +234,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const players = {};
-    const timers = {}; 
+    let players = {};
+    let timers = {}; 
 
     const icons = {
         start: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M240,128a112,112,0,1,1-112-112A112,112,0,0,1,240,128Zm-152-80,96,80-96,80Z"></path></svg>`,
@@ -244,30 +244,132 @@ document.addEventListener('DOMContentLoaded', () => {
         remove: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88H80a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Z"></path></svg>`
     };
 
-    document.querySelectorAll('.player-list li').forEach((li) => {
-        const playerName = li.textContent.trim();
-        if (!playerName) { li.remove(); return; }
-        if (!players[playerName]) { players[playerName] = { score: 0 }; }
-        li.innerHTML = `
-            <div class="flex items-center justify-between w-full">
-                <span class="player-name text-lg" data-player="${playerName}">${playerName}</span>
-                <div class="flex items-center gap-2">
-                    <span class="match-score font-bold text-gray-400 w-16 text-right pr-2" data-match-score="0">0 Pts</span>
-                    <button class="icon-btn bg-yellow-400 text-gray-900 text-xl" title="Vitória (+2 Pts)" data-action="win" data-player="${playerName}">⭐</button>
-                    <button class="icon-btn accent-bg text-white" title="Abate (+1 Pt)" data-action="add" data-player="${playerName}">${icons.add}</button>
-                    <button class="icon-btn bg-red-500 text-white" title="Remover (-1 Pt)" data-action="remove" data-player="${playerName}">${icons.remove}</button>
-                </div>
-            </div>`;
-    });
+    function saveState() {
+        const state = {
+            players,
+            timers: {},
+            matches: {}
+        };
 
-    document.querySelectorAll('.timer-control-btn').forEach(btn => {
-        btn.innerHTML = icons.start;
-        const roundId = btn.dataset.round;
-        timers[roundId] = { intervalId: null, duration: 3600 };
-    });
+        Object.keys(timers).forEach(roundId => {
+            state.timers[roundId] = {
+                duration: timers[roundId].duration,
+                state: timers[roundId].state || 'initial'
+            };
+        });
+
+        document.querySelectorAll('.player-name').forEach(span => {
+            const playerRow = span.closest('.flex.items-center.justify-between');
+            const matchScoreSpan = playerRow.querySelector('.match-score');
+            state.matches[playerRow.id] = {
+                matchScore: parseInt(matchScoreSpan.dataset.matchScore, 10),
+                isWinner: span.classList.contains('player-winner')
+            };
+        });
+        
+        localStorage.setItem('torneioState', JSON.stringify(state));
+    }
+
+    function formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function loadState() {
+        const savedState = localStorage.getItem('torneioState');
+        if (!savedState) return;
+
+        const state = JSON.parse(savedState);
+        players = state.players || {};
+
+        if (state.timers) {
+            Object.keys(state.timers).forEach(roundId => {
+                const timerData = state.timers[roundId];
+                timers[roundId] = { ...timers[roundId], ...timerData };
+                
+                const timerEl = document.querySelector(`.timer[data-round="${roundId}"]`);
+                timerEl.textContent = formatTime(timerData.duration);
+                const button = document.querySelector(`.timer-control-btn[data-round="${roundId}"]`);
+
+                if (timerData.duration <= 0) {
+                     timerEl.classList.add('timer-finished');
+                     button.textContent = 'Finalizado';
+                     button.dataset.action = 'finished';
+                     button.disabled = true;
+                     button.classList.add('bg-red-600', 'cursor-not-allowed');
+                } else if (timerData.state === 'paused') {
+                    button.innerHTML = icons.start;
+                    button.dataset.action = 'resume';
+                    button.title = 'Retomar';
+                    button.classList.remove('bg-green-500', 'bg-yellow-500');
+                    button.classList.add('bg-blue-500');
+                }
+            });
+        }
+        
+        if(state.matches) {
+            Object.keys(state.matches).forEach(matchId => {
+                const matchData = state.matches[matchId];
+                const playerRow = document.getElementById(matchId);
+                if (playerRow) {
+                    const matchScoreSpan = playerRow.querySelector('.match-score');
+                    const nameSpan = playerRow.querySelector('.player-name');
+                    
+                    matchScoreSpan.dataset.matchScore = matchData.matchScore;
+                    matchScoreSpan.textContent = `${matchData.matchScore} Pts`;
+
+                    if (matchData.isWinner) {
+                        nameSpan.classList.add('player-winner');
+                    } else {
+                        nameSpan.classList.remove('player-winner');
+                    }
+                }
+            });
+        }
+    }
+
+
+    function initializeUI() {
+        document.querySelectorAll('.player-list').forEach((ul, i) => {
+            const roundCard = ul.closest('.glass-card');
+            const round = roundCard.querySelector('h2').textContent.trim();
+            const roundId = round.split(' ')[1];
+            const mesa = ul.previousElementSibling.textContent.trim();
+            const mesaId = mesa.split(' ')[1];
+
+            ul.querySelectorAll('li').forEach((li, j) => {
+                const playerName = li.textContent.trim();
+                if (!playerName) { li.remove(); return; }
+                if (!players[playerName]) { players[playerName] = { score: 0 }; }
+
+                const rowId = `r${roundId}-m${mesaId}-p${j}`;
+                li.innerHTML = `
+                    <div class="flex items-center justify-between w-full" id="${rowId}">
+                        <span class="player-name text-lg" data-player="${playerName}">${playerName}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="match-score font-bold text-gray-400 w-16 text-right pr-2" data-match-score="0">0 Pts</span>
+                            <button class="icon-btn bg-yellow-400 text-gray-900 text-xl" title="Vitória (+2 Pts)" data-action="win" data-player="${playerName}">⭐</button>
+                            <button class="icon-btn accent-bg text-white" title="Abate (+1 Pt)" data-action="add" data-player="${playerName}">${icons.add}</button>
+                            <button class="icon-btn bg-red-500 text-white" title="Remover (-1 Pt)" data-action="remove" data-player="${playerName}">${icons.remove}</button>
+                        </div>
+                    </div>`;
+            });
+        });
+
+        document.querySelectorAll('.timer-control-btn').forEach(btn => {
+            btn.innerHTML = icons.start;
+            const roundId = btn.dataset.round;
+            if(!timers[roundId]) {
+                timers[roundId] = { intervalId: null, duration: 3600, state: 'initial' };
+            }
+        });
+    }
 
     function updateScoreboard() {
         const scoreboard = document.getElementById('scoreboard');
+        if(!scoreboard) return;
         scoreboard.innerHTML = '';
         const sortedPlayers = Object.entries(players).sort(([, a], [, b]) => b.score - a.score);
         sortedPlayers.forEach(([name, data], index) => {
@@ -286,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateTotalPlayerScore(playerName, points) {
         players[playerName].score = Math.max(0, players[playerName].score + points);
         updateScoreboard();
+        saveState();
     }
 
     document.getElementById('rounds-container').addEventListener('click', (event) => {
@@ -304,23 +407,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.title = 'Pausar';
                 button.classList.remove('bg-green-500', 'bg-blue-500');
                 button.classList.add('bg-yellow-500');
+                timerData.state = 'running';
 
                 timerData.intervalId = setInterval(() => {
                     timerData.duration--;
-                    const hours = Math.floor(timerData.duration / 3600);
-                    const minutes = Math.floor((timerData.duration % 3600) / 60);
-                    const seconds = timerData.duration % 60;
-                    timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
+                    timerEl.textContent = formatTime(timerData.duration);
                     if (timerData.duration <= 0) {
                         clearInterval(timerData.intervalId);
                         timerEl.classList.add('timer-finished');
-                        button.textContent = 'Finalizado';
+                        button.innerHTML = 'Finalizado';
                         button.dataset.action = 'finished';
                         button.disabled = true;
                         button.classList.remove('bg-yellow-500');
                         button.classList.add('bg-red-600', 'cursor-not-allowed');
+                        timerData.state = 'finished';
                     }
+                    saveState();
                 }, 1000);
             } else if (action === 'pause') {
                 clearInterval(timerData.intervalId);
@@ -330,13 +432,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.title = 'Retomar';
                 button.classList.remove('bg-yellow-500');
                 button.classList.add('bg-blue-500');
+                timerData.state = 'paused';
             }
+            saveState();
             return;
         }
         
         const action = button.dataset.action;
         const playerName = button.dataset.player;
-        const playerRow = button.closest('.flex.items-center.justify-between');
+        const playerRow = button.closest('div.flex.items-center.justify-between');
         const matchScoreSpan = playerRow.querySelector('.match-score');
         let currentMatchScore = parseInt(matchScoreSpan.dataset.matchScore, 10);
         
@@ -349,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (winnerSpan !== nameSpan) {
                     const otherPlayerRow = winnerSpan.closest('div');
                     const otherMatchScore = otherPlayerRow.querySelector('.match-score');
-                    const newScore = parseInt(otherMatchScore.dataset.matchScore, 10) - 2;
+                    const newScore = Math.max(0, parseInt(otherMatchScore.dataset.matchScore, 10) - 2);
                     otherMatchScore.dataset.matchScore = newScore;
                     otherMatchScore.textContent = `${newScore} Pts`;
                     updateTotalPlayerScore(winnerSpan.dataset.player, -2);
@@ -375,15 +479,18 @@ document.addEventListener('DOMContentLoaded', () => {
             matchScoreSpan.textContent = `${newScore} Pts`;
             updateTotalPlayerScore(playerName, 1);
         } else if (action === 'remove') {
-            if (currentMatchScore > 0) {
-                const newScore = currentMatchScore - 1;
+            if (players[playerName].score > 0 && currentMatchScore > 0) {
+                 const newScore = currentMatchScore - 1;
                 matchScoreSpan.dataset.matchScore = newScore;
                 matchScoreSpan.textContent = `${newScore} Pts`;
                 updateTotalPlayerScore(playerName, -1);
             }
         }
+        saveState();
     });
 
+    initializeUI();
+    loadState();
     updateScoreboard();
 });
 </script>
