@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2º Torneio EDHBECK - C150 Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent-color: #38bdf8; /* Electric Blue */
+            --background-dark: #111827; /* Tailwind gray-900 */
+            --card-bg: rgba(31, 41, 55, 0.5);
+            --border-color: rgba(55, 65, 81, 0.6);
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-dark);
+            background-image: radial-gradient(var(--text-secondary) 0.5px, transparent 0.5px), radial-gradient(var(--text-secondary) 0.5px, var(--background-dark) 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            color: var(--text-primary);
+        }
+        .glass-card {
+            background: var(--card-bg);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        .mesa-card {
+             background-color: rgba(55, 65, 81, 0.4);
+        }
+        .player-winner {
+            color: #facc15; /* yellow-400 */
+            font-weight: 700;
+        }
+        .player-winner::before {
+            content: '⭐ ';
+        }
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            transition: all 0.2s ease-in-out;
+        }
+        .icon-btn:hover {
+            transform: scale(1.15);
+            filter: brightness(1.2);
+        }
+        .timer-finished {
+            color: #ef4444; /* red-500 */
+        }
+        .scoreboard-entry {
+            transition: all 0.3s ease;
+        }
+        .scoreboard-entry-1st {
+            background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.05));
+            border-left: 4px solid #facc15; /* yellow-400 */
+        }
+        .scoreboard-entry-2nd {
+            background: linear-gradient(135deg, rgba(209, 213, 219, 0.2), rgba(209, 213, 219, 0.05));
+            border-left: 4px solid #d1d5db; /* gray-300 */
+        }
+        .scoreboard-entry-3rd {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(205, 127, 50, 0.05));
+            border-left: 4px solid #CD7F32; /* Bronze */
+        }
+        .accent-text {
+            color: var(--accent-color);
+        }
+        .accent-bg {
+             background-color: var(--accent-color);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="container mx-auto max-w-7xl">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl sm:text-5xl font-bold accent-text mb-2">
+                2º torneio EDHBECK - C150 Edition
+            </h1>
+            <p class="text-lg" style="color: var(--text-secondary);">Distribuição de Mesas e Rodadas</p>
+        </header>
+
+        <section class="glass-card rounded-xl p-6 mb-12">
+            <h2 class="text-2xl font-bold mb-4 text-center accent-text">Placar Geral</h2>
+            <div id="scoreboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-lg">
+                <!-- Scores serão inseridos aqui pelo JS -->
+            </div>
+        </section>
+
+
+        <section class="glass-card rounded-xl p-6 mb-12 max-w-3xl mx-auto">
+            <h2 class="text-2xl font-bold mb-4 text-center accent-text">Regras e Pontuação</h2>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-900/50 rounded-md">
+                    <span class="text-lg">Vitória da mesa</span>
+                    <span class="font-bold text-gray-900 accent-bg px-3 py-1 rounded-full text-sm">2 Pontos</span>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-900/50 rounded-md">
+                    <span class="text-lg">Empate da mesa</span>
+                    <span class="font-bold text-gray-900 accent-bg px-3 py-1 rounded-full text-sm">1 Ponto</span>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-900/50 rounded-md">
+                    <span class="text-lg">Matou alguém</span>
+                    <span class="font-bold text-gray-900 accent-bg px-3 py-1 rounded-full text-sm">1 Ponto</span>
+                </li>
+                 <li class="flex items-center justify-between p-3 bg-gray-900/50 rounded-md">
+                    <span class="text-lg">Duração das partidas</span>
+                    <span class="font-bold text-white bg-gray-600 px-3 py-1 rounded-full text-sm">1h</span>
+                </li>
+            </ul>
+        </section>
+
+
+        <main id="rounds-container" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Rodada 1 -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b-2 pb-3 gap-4" style="border-color: var(--border-color);">
+                    <h2 class="text-3xl font-bold">Rodada 1</h2>
+                    <div class="flex items-center gap-4 bg-gray-900/50 rounded-full px-4 py-2">
+                        <span class="timer text-2xl font-bold text-yellow-300" data-round="1">01:00:00</span>
+                        <button class="timer-control-btn icon-btn bg-green-500 text-white" data-round="1" data-action="start" title="Iniciar"></button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 1</h3>
+                        <ul class="space-y-3 player-list"><li>Caio</li> <li>Duh</li> <li>Vitor</li> <li>Arlei</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 2</h3>
+                        <ul class="space-y-3 player-list"><li>Miguel</li> <li>Conde</li> <li>Angela</li> <li>Julius</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 3</h3>
+                        <ul class="space-y-3 player-list"><li>João</li> <li>Eduardo</li> <li>Alvinho</li> <li>Iuri</li></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rodada 2 -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b-2 pb-3 gap-4" style="border-color: var(--border-color);">
+                    <h2 class="text-3xl font-bold">Rodada 2</h2>
+                     <div class="flex items-center gap-4 bg-gray-900/50 rounded-full px-4 py-2">
+                        <span class="timer text-2xl font-bold text-yellow-300" data-round="2">01:00:00</span>
+                        <button class="timer-control-btn icon-btn bg-green-500 text-white" data-round="2" data-action="start" title="Iniciar"></button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 1</h3>
+                        <ul class="space-y-3 player-list"><li>Duh</li> <li>Conde</li> <li>Alvinho</li> <li>Angela</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 2</h3>
+                        <ul class="space-y-3 player-list"><li>Vitor</li> <li>Arlei</li> <li>Julius</li> <li>Iuri</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 3</h3>
+                        <ul class="space-y-3 player-list"><li>Miguel</li> <li>Caio</li> <li>João</li> <li>Eduardo</li></ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rodada 3 -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b-2 pb-3 gap-4" style="border-color: var(--border-color);">
+                    <h2 class="text-3xl font-bold">Rodada 3</h2>
+                     <div class="flex items-center gap-4 bg-gray-900/50 rounded-full px-4 py-2">
+                        <span class="timer text-2xl font-bold text-yellow-300" data-round="3">01:00:00</span>
+                        <button class="timer-control-btn icon-btn bg-green-500 text-white" data-round="3" data-action="start" title="Iniciar"></button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 1</h3>
+                        <ul class="space-y-3 player-list"><li>Vitor</li> <li>Angela</li> <li>Eduardo</li> <li>Arlei</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 2</h3>
+                        <ul class="space-y-3 player-list"><li>Duh</li> <li>Miguel</li> <li>Iuri</li> <li>João</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 3</h3>
+                        <ul class="space-y-3 player-list"><li>Alvinho</li> <li>Julius</li> <li>Caio</li> <li>Conde</li></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rodada 4 -->
+            <div class="glass-card rounded-xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b-2 pb-3 gap-4" style="border-color: var(--border-color);">
+                    <h2 class="text-3xl font-bold">Rodada 4</h2>
+                     <div class="flex items-center gap-4 bg-gray-900/50 rounded-full px-4 py-2">
+                        <span class="timer text-2xl font-bold text-yellow-300" data-round="4">01:00:00</span>
+                        <button class="timer-control-btn icon-btn bg-green-500 text-white" data-round="4" data-action="start" title="Iniciar"></button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 1</h3>
+                        <ul class="space-y-3 player-list"><li>Angela</li> <li>Caio</li> <li>Iuri</li> <li>Arlei</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 2</h3>
+                        <ul class="space-y-3 player-list"><li>Conde</li> <li>Alvinho</li> <li>João</li> <li>Vitor</li></ul>
+                    </div>
+                    <div class="mesa-card rounded-lg p-4">
+                        <h3 class="font-semibold text-xl accent-text mb-3">Mesa 3</h3>
+                        <ul class="space-y-3 player-list"><li>Miguel</li> <li>Eduardo</li> <li>Duh</li> <li>Julius</li></ul>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const players = {};
+    const timers = {}; 
+
+    const icons = {
+        start: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M240,128a112,112,0,1,1-112-112A112,112,0,0,1,240,128Zm-152-80,96,80-96,80Z"></path></svg>`,
+        pause: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-8,160a8,8,0,0,1-16,0V72a8,8,0,0,1,16,0Zm48,0a8,8,0,0,1-16,0V72a8,8,0,0,1,16,0Z"></path></svg>`,
+        add: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M228.44,108.69,147.31,27.56a12,12,0,0,0-17,0L49.44,108.41a12,12,0,0,0-3.37,9.31L42.63,208a12,12,0,0,0,12,12.63l90.34-3.44a12,12,0,0,0,9.31-3.37l80.87-80.88a12,12,0,0,0,0-17ZM136,51.88,204.12,120H136ZM120,204.12,51.88,136H120Zm101-101.06-20,20-68.12-68.12,20-20a4,4,0,0,1,5.66,0l42.43,42.42a4,4,0,0,1,0,5.66Z"></path></svg>`,
+        remove: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88H80a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Z"></path></svg>`
+    };
+
+    document.querySelectorAll('.player-list li').forEach((li) => {
+        const playerName = li.textContent.trim();
+        if (!playerName) { li.remove(); return; }
+        if (!players[playerName]) { players[playerName] = { score: 0 }; }
+        li.innerHTML = `
+            <div class="flex items-center justify-between w-full">
+                <span class="player-name text-lg" data-player="${playerName}">${playerName}</span>
+                <div class="flex items-center gap-2">
+                    <span class="match-score font-bold text-gray-400 w-16 text-right pr-2" data-match-score="0">0 Pts</span>
+                    <button class="icon-btn bg-yellow-400 text-gray-900 text-xl" title="Vitória (+2 Pts)" data-action="win" data-player="${playerName}">⭐</button>
+                    <button class="icon-btn accent-bg text-white" title="Abate (+1 Pt)" data-action="add" data-player="${playerName}">${icons.add}</button>
+                    <button class="icon-btn bg-red-500 text-white" title="Remover (-1 Pt)" data-action="remove" data-player="${playerName}">${icons.remove}</button>
+                </div>
+            </div>`;
+    });
+
+    document.querySelectorAll('.timer-control-btn').forEach(btn => {
+        btn.innerHTML = icons.start;
+        const roundId = btn.dataset.round;
+        timers[roundId] = { intervalId: null, duration: 3600 };
+    });
+
+    function updateScoreboard() {
+        const scoreboard = document.getElementById('scoreboard');
+        scoreboard.innerHTML = '';
+        const sortedPlayers = Object.entries(players).sort(([, a], [, b]) => b.score - a.score);
+        sortedPlayers.forEach(([name, data], index) => {
+            const playerScoreDiv = document.createElement('div');
+            let rankClass = '';
+            if (index === 0 && data.score > 0) rankClass = 'scoreboard-entry-1st';
+            else if (index === 1 && data.score > 0) rankClass = 'scoreboard-entry-2nd';
+            else if (index === 2 && data.score > 0) rankClass = 'scoreboard-entry-3rd';
+            
+            playerScoreDiv.className = `scoreboard-entry ${rankClass} p-3 rounded-lg flex justify-between items-center`;
+            playerScoreDiv.innerHTML = `<span class="font-semibold text-lg"><span class="inline-block w-6 text-gray-400">${index + 1}.</span>${name}</span><span class="font-bold accent-text text-xl">${data.score} Pts</span>`;
+            scoreboard.appendChild(playerScoreDiv);
+        });
+    }
+    
+    function updateTotalPlayerScore(playerName, points) {
+        players[playerName].score = Math.max(0, players[playerName].score + points);
+        updateScoreboard();
+    }
+
+    document.getElementById('rounds-container').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        if (button.classList.contains('timer-control-btn')) {
+            const roundId = button.dataset.round;
+            const action = button.dataset.action;
+            const timerData = timers[roundId];
+            const timerEl = document.querySelector(`.timer[data-round="${roundId}"]`);
+
+            if (action === 'start' || action === 'resume') {
+                button.innerHTML = icons.pause;
+                button.dataset.action = 'pause';
+                button.title = 'Pausar';
+                button.classList.remove('bg-green-500', 'bg-blue-500');
+                button.classList.add('bg-yellow-500');
+
+                timerData.intervalId = setInterval(() => {
+                    timerData.duration--;
+                    const hours = Math.floor(timerData.duration / 3600);
+                    const minutes = Math.floor((timerData.duration % 3600) / 60);
+                    const seconds = timerData.duration % 60;
+                    timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+                    if (timerData.duration <= 0) {
+                        clearInterval(timerData.intervalId);
+                        timerEl.classList.add('timer-finished');
+                        button.textContent = 'Finalizado';
+                        button.dataset.action = 'finished';
+                        button.disabled = true;
+                        button.classList.remove('bg-yellow-500');
+                        button.classList.add('bg-red-600', 'cursor-not-allowed');
+                    }
+                }, 1000);
+            } else if (action === 'pause') {
+                clearInterval(timerData.intervalId);
+                timerData.intervalId = null;
+                button.innerHTML = icons.start;
+                button.dataset.action = 'resume';
+                button.title = 'Retomar';
+                button.classList.remove('bg-yellow-500');
+                button.classList.add('bg-blue-500');
+            }
+            return;
+        }
+        
+        const action = button.dataset.action;
+        const playerName = button.dataset.player;
+        const playerRow = button.closest('.flex.items-center.justify-between');
+        const matchScoreSpan = playerRow.querySelector('.match-score');
+        let currentMatchScore = parseInt(matchScoreSpan.dataset.matchScore, 10);
+        
+        if (action === 'win') {
+            const nameSpan = playerRow.querySelector('.player-name');
+            const isWinner = nameSpan.classList.contains('player-winner');
+            const mesa = button.closest('.player-list');
+
+            mesa.querySelectorAll('.player-name.player-winner').forEach(winnerSpan => {
+                if (winnerSpan !== nameSpan) {
+                    const otherPlayerRow = winnerSpan.closest('div');
+                    const otherMatchScore = otherPlayerRow.querySelector('.match-score');
+                    const newScore = parseInt(otherMatchScore.dataset.matchScore, 10) - 2;
+                    otherMatchScore.dataset.matchScore = newScore;
+                    otherMatchScore.textContent = `${newScore} Pts`;
+                    updateTotalPlayerScore(winnerSpan.dataset.player, -2);
+                    winnerSpan.classList.remove('player-winner');
+                }
+            });
+
+            if (isWinner) {
+                const newScore = currentMatchScore - 2;
+                matchScoreSpan.dataset.matchScore = newScore;
+                updateTotalPlayerScore(playerName, -2);
+                nameSpan.classList.remove('player-winner');
+            } else {
+                const newScore = currentMatchScore + 2;
+                matchScoreSpan.dataset.matchScore = newScore;
+                updateTotalPlayerScore(playerName, 2);
+                nameSpan.classList.add('player-winner');
+            }
+            matchScoreSpan.textContent = `${matchScoreSpan.dataset.matchScore} Pts`;
+        } else if (action === 'add') {
+            const newScore = currentMatchScore + 1;
+            matchScoreSpan.dataset.matchScore = newScore;
+            matchScoreSpan.textContent = `${newScore} Pts`;
+            updateTotalPlayerScore(playerName, 1);
+        } else if (action === 'remove') {
+            if (currentMatchScore > 0) {
+                const newScore = currentMatchScore - 1;
+                matchScoreSpan.dataset.matchScore = newScore;
+                matchScoreSpan.textContent = `${newScore} Pts`;
+                updateTotalPlayerScore(playerName, -1);
+            }
+        }
+    });
+
+    updateScoreboard();
+});
+</script>
+
+</body>
+</html>
+
