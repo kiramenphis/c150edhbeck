@@ -184,7 +184,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadState() {
         const savedState = localStorage.getItem('torneioState');
         if (savedState) {
-            state = JSON.parse(savedState);
+            const loaded = JSON.parse(savedState);
+            // Robustness check: if loaded state is invalid (e.g., empty player list), reset.
+            if (!loaded.playerList || loaded.playerList.length !== 12) {
+                initializeDefaultState();
+            } else {
+                state = loaded;
+            }
         } else {
             initializeDefaultState();
         }
@@ -200,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Tournament Logic ---
     function handleStartTournament() {
-        // Initialize players object
+        // Initialize players object and reset tournament progress
         state.players = {};
         state.playerList.forEach(name => { state.players[name] = { score: 0 }; });
         state.currentRound = 1;
@@ -216,10 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mesa3: shuffledPlayers.slice(8, 12),
         };
         
-        roundsContainer.innerHTML = ''; // Clear previous rounds from UI
-        renderRound(1, state.roundData[1]);
-        updateScoreboard();
-        renderControlButtons();
         updateView();
         saveState();
     }
@@ -407,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateScoreboard() {
-        if (!state.players) return;
+        if (!state.players || Object.keys(state.players).length === 0) return;
         scoreboard.innerHTML = '';
         const sortedPlayers = Object.entries(state.players).sort(([, a], [, b]) => b.score - a.score);
         sortedPlayers.forEach(([name, data], index) => {
