@@ -102,17 +102,13 @@
         <!-- Player Setup -->
         <div id="setup-container">
             <section class="glass-card rounded-xl p-6 mb-12 max-w-3xl mx-auto">
-                <h2 class="text-2xl font-bold mb-4 text-center accent-text">Inscrição de Jogadores</h2>
-                <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                    <input type="text" id="player-name-input" placeholder="Nome do Jogador" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[var(--accent-color)] focus:outline-none">
-                    <button id="add-player-btn" class="accent-bg text-white font-bold py-2 px-6 rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap">Adicionar Jogador</button>
-                </div>
-                <div id="player-list-setup" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <h2 class="text-2xl font-bold mb-4 text-center accent-text">Jogadores Inscritos</h2>
+                <div id="player-list-setup" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
                     <!-- Lista de jogadores adicionados -->
                 </div>
-                <div class="text-center mt-6">
-                    <button id="start-tournament-btn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors text-lg disabled:bg-gray-500 disabled:cursor-not-allowed" disabled>
-                        Iniciar Torneio (0/12)
+                <div class="text-center">
+                    <button id="start-tournament-btn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors text-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        Iniciar Torneio (12/12)
                     </button>
                 </div>
             </section>
@@ -120,6 +116,11 @@
 
         <!-- Tournament View -->
         <div id="tournament-container" class="hidden">
+             <div class="flex justify-center mb-8">
+                <button id="reset-tournament-btn" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition-colors">
+                    Reiniciar Torneio
+                </button>
+            </div>
             <section class="glass-card rounded-xl p-6 mb-12">
                 <h2 class="text-2xl font-bold mb-4 text-center accent-text">Placar Geral</h2>
                 <div id="scoreboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-lg">
@@ -140,18 +141,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const defaultPlayerList = [
+        'Caio', 'Duh', 'Vitor', 'Arlei', 'Miguel', 'Conde', 
+        'Angela', 'Julius', 'João', 'Eduardo', 'Alvinho', 'Iuri'
+    ];
+
     // State management
-    let state = {
-        players: {}, // { name: { score: 0 } }
-        playerList: [
-            'Caio', 'Duh', 'Vitor', 'Arlei', 'Miguel', 'Conde', 
-            'Angela', 'Julius', 'João', 'Eduardo', 'Alvinho', 'Iuri'
-        ],
-        currentRound: 0,
-        roundData: {}, // { 1: { mesa1: [], ... }, 2: ... }
-        timers: {},
-        matches: {},
-    };
+    let state = {};
 
     const icons = {
         start: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M240,128a112,112,0,1,1-112-112A112,112,0,0,1,240,128Zm-152-80,96,80-96,80Z"></path></svg>`,
@@ -163,13 +159,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const setupContainer = document.getElementById('setup-container');
     const tournamentContainer = document.getElementById('tournament-container');
-    const playerNameInput = document.getElementById('player-name-input');
-    const addPlayerBtn = document.getElementById('add-player-btn');
     const playerListSetup = document.getElementById('player-list-setup');
     const startTournamentBtn = document.getElementById('start-tournament-btn');
+    const resetTournamentBtn = document.getElementById('reset-tournament-btn');
     const roundsContainer = document.getElementById('rounds-container');
     const scoreboard = document.getElementById('scoreboard');
     const controlsContainer = document.getElementById('controls-container');
+
+    function initializeDefaultState() {
+        state = {
+            players: {},
+            playerList: [...defaultPlayerList],
+            currentRound: 0,
+            roundData: {},
+            timers: {},
+            matches: {},
+        };
+    }
 
     function saveState() {
         localStorage.setItem('torneioState', JSON.stringify(state));
@@ -178,59 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadState() {
         const savedState = localStorage.getItem('torneioState');
         if (savedState) {
-            const loaded = JSON.parse(savedState);
-            // Don't overwrite player list if it's already pre-filled and we're starting fresh
-            const playerListToKeep = state.playerList.length === 12 && loaded.playerList.length === 0 ? state.playerList : loaded.playerList;
-            state = { ...state, ...loaded, playerList: playerListToKeep };
-        
-            if (state.currentRound > 0) {
-                setupContainer.classList.add('hidden');
-                tournamentContainer.classList.remove('hidden');
-                
-                // Re-render all completed rounds
-                for (let i = 1; i <= state.currentRound; i++) {
-                    renderRound(i, state.roundData[i]);
-                }
-                
-                // Restore timer states
-                Object.keys(state.timers).forEach(roundId => {
-                     const timerData = state.timers[roundId];
-                     const timerEl = document.querySelector(`.timer[data-round="${roundId}"]`);
-                     if(timerEl) {
-                        timerEl.textContent = formatTime(timerData.duration);
-                        const button = document.querySelector(`.timer-control-btn[data-round="${roundId}"]`);
-                        if(timerData.duration <=0) {
-                             timerEl.classList.add('timer-finished');
-                             button.innerHTML = 'Finalizado';
-                             button.disabled = true;
-                             button.classList.add('bg-red-600', 'cursor-not-allowed');
-                        } else if(timerData.state === 'paused') {
-                            button.innerHTML = icons.start; button.dataset.action = 'resume'; button.title = 'Retomar';
-                            button.classList.remove('bg-yellow-500'); button.classList.add('bg-blue-500');
-                        }
-                     }
-                });
-
-                // Restore match scores and winners
-                Object.keys(state.matches).forEach(rowId => {
-                    const playerRow = document.getElementById(rowId);
-                    if (playerRow) {
-                        const matchData = state.matches[rowId];
-                        const matchScoreSpan = playerRow.querySelector('.match-score');
-                        const nameSpan = playerRow.querySelector('.player-name');
-                        matchScoreSpan.dataset.matchScore = matchData.matchScore;
-                        matchScoreSpan.textContent = `${matchData.matchScore} Pts`;
-                        if (matchData.isWinner) nameSpan.classList.add('player-winner');
-                    }
-                });
-                
-                updateScoreboard();
-                renderControlButtons();
-            } else if (state.playerList.length > 0) {
-                renderPlayerListSetup();
-            }
+            state = JSON.parse(savedState);
         } else {
-             renderPlayerListSetup();
+            initializeDefaultState();
         }
     }
     
@@ -239,23 +195,12 @@ document.addEventListener('DOMContentLoaded', () => {
         playerListSetup.innerHTML = state.playerList.map(name =>
             `<div class="bg-gray-800 p-2 rounded-md text-center">${name}</div>`
         ).join('');
-        startTournamentBtn.textContent = `Iniciar Torneio (${state.playerList.length}/12)`;
         startTournamentBtn.disabled = state.playerList.length !== 12;
-    }
-
-    function handleAddPlayer() {
-        const name = playerNameInput.value.trim();
-        if (name && state.playerList.length < 12 && !state.playerList.includes(name)) {
-            state.playerList.push(name);
-            playerNameInput.value = '';
-            renderPlayerListSetup();
-            saveState();
-        }
     }
 
     // --- Tournament Logic ---
     function handleStartTournament() {
-        // Clear previous tournament data if any, except player list
+        // Initialize players object
         state.players = {};
         state.playerList.forEach(name => { state.players[name] = { score: 0 }; });
         state.currentRound = 1;
@@ -271,13 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
             mesa3: shuffledPlayers.slice(8, 12),
         };
         
-        setupContainer.classList.add('hidden');
-        tournamentContainer.classList.remove('hidden');
-        
         roundsContainer.innerHTML = ''; // Clear previous rounds from UI
         renderRound(1, state.roundData[1]);
         updateScoreboard();
         renderControlButtons();
+        updateView();
         saveState();
     }
     
@@ -308,6 +251,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderRound(nextRound, newRoundData);
         renderControlButtons();
         saveState();
+    }
+
+    function handleResetTournament() {
+        if (confirm('Tem a certeza que quer reiniciar o torneio? Todo o progresso será perdido.')) {
+            localStorage.removeItem('torneioState');
+            initializeDefaultState();
+            updateView();
+        }
     }
 
     function getTableResults(round, table) {
@@ -341,6 +292,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Rendering Logic ---
+     function updateView() {
+        if (state.currentRound > 0) {
+            setupContainer.classList.add('hidden');
+            tournamentContainer.classList.remove('hidden');
+            roundsContainer.innerHTML = '';
+            for (let i = 1; i <= state.currentRound; i++) {
+                renderRound(i, state.roundData[i]);
+            }
+            restoreAllMatches();
+            updateScoreboard();
+            renderControlButtons();
+        } else {
+            tournamentContainer.classList.add('hidden');
+            setupContainer.classList.remove('hidden');
+            renderPlayerListSetup();
+        }
+    }
+
     function renderControlButtons() {
         controlsContainer.innerHTML = '';
         if (state.currentRound > 0 && state.currentRound < 4) {
@@ -408,10 +377,37 @@ document.addEventListener('DOMContentLoaded', () => {
         timerBtn.innerHTML = icons.start;
         if (!state.timers[roundId]) {
             state.timers[roundId] = { intervalId: null, duration: 3600, state: 'initial' };
+        } else {
+             const timerData = state.timers[roundId];
+             const timerEl = document.querySelector(`.timer[data-round="${roundId}"]`);
+             timerEl.textContent = formatTime(timerData.duration);
+             if(timerData.duration <=0) {
+                 timerEl.classList.add('timer-finished');
+                 timerBtn.innerHTML = 'Finalizado'; timerBtn.disabled = true;
+                 timerBtn.classList.add('bg-red-600', 'cursor-not-allowed');
+            } else if(timerData.state === 'paused') {
+                timerBtn.innerHTML = icons.start; timerBtn.dataset.action = 'resume'; timerBtn.title = 'Retomar';
+                timerBtn.classList.remove('bg-yellow-500'); timerBtn.classList.add('bg-blue-500');
+            }
         }
     }
     
+    function restoreAllMatches() {
+        Object.keys(state.matches).forEach(rowId => {
+            const playerRow = document.getElementById(rowId);
+            if (playerRow) {
+                const matchData = state.matches[rowId];
+                const matchScoreSpan = playerRow.querySelector('.match-score');
+                const nameSpan = playerRow.querySelector('.player-name');
+                matchScoreSpan.dataset.matchScore = matchData.matchScore;
+                matchScoreSpan.textContent = `${matchData.matchScore} Pts`;
+                if (matchData.isWinner) nameSpan.classList.add('player-winner');
+            }
+        });
+    }
+
     function updateScoreboard() {
+        if (!state.players) return;
         scoreboard.innerHTML = '';
         const sortedPlayers = Object.entries(state.players).sort(([, a], [, b]) => b.score - a.score);
         sortedPlayers.forEach(([name, data], index) => {
@@ -436,11 +432,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners ---
-    addPlayerBtn.addEventListener('click', handleAddPlayer);
-    playerNameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleAddPlayer();
-    });
     startTournamentBtn.addEventListener('click', handleStartTournament);
+    resetTournamentBtn.addEventListener('click', handleResetTournament);
 
     tournamentContainer.addEventListener('click', (event) => {
         const button = event.target.closest('button');
@@ -537,7 +530,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initial load
-    loadState();
+    function initializeApp() {
+        loadState();
+        updateView();
+    }
+
+    initializeApp();
 });
 </script>
 
